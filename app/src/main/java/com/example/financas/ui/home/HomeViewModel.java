@@ -26,7 +26,6 @@ public class HomeViewModel extends ViewModel {
 
     private final FirebaseFirestore db = FirebaseFirestore.getInstance();
     private ListenerRegistration despesasListenerRegistration;
-    private ListenerRegistration despesasListenerRegistration;
 
     private final SingleLiveEvent<Void> _fabClickEvent = new SingleLiveEvent<>();
     public LiveData<Void> getFabClickEvent() {
@@ -45,31 +44,39 @@ public class HomeViewModel extends ViewModel {
 
     // This method will be called by the Fragment with the calculated dates
     public void loadDespesas(Date startDate, Date endDate) {
+        android.util.Log.d("HomeViewModel", "loadDespesas called");
+
         // Remove previous listener if it exists
         if (despesasListenerRegistration != null) {
             despesasListenerRegistration.remove();
+            android.util.Log.d("HomeViewModel", "Previous listener removed");
         }
 
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         if (currentUser == null) {
+            android.util.Log.d("HomeViewModel", "No current user, clearing expenses");
             _despesas.setValue(new ArrayList<>()); // Clear expenses if no user is logged in
             return;
         }
         String currentUserId = currentUser.getUid();
+        android.util.Log.d("HomeViewModel", "Current user ID: " + currentUserId);
 
         Query query = db.collection("despesas")
                 .whereEqualTo("userId", currentUserId);
 
         if (startDate != null) {
             query = query.whereGreaterThanOrEqualTo("dataCadastro", startDate);
+            android.util.Log.d("HomeViewModel", "Start Date: " + startDate);
         }
         if (endDate != null) {
             query = query.whereLessThanOrEqualTo("dataCadastro", endDate);
+            android.util.Log.d("HomeViewModel", "End Date: " + endDate);
         }
 
         despesasListenerRegistration = query.orderBy("dataCadastro", Query.Direction.DESCENDING)
                 .addSnapshotListener((value, error) -> {
                     if (error != null) {
+                        android.util.Log.e("HomeViewModel", "Firestore listen error: " + error.getMessage());
                         return;
                     }
 
@@ -81,6 +88,7 @@ public class HomeViewModel extends ViewModel {
                             loadedDespesas.add(despesa);
                         }
                     }
+                    android.util.Log.d("HomeViewModel", "Loaded " + loadedDespesas.size() + " expenses");
                     _despesas.setValue(loadedDespesas);
                 });
     }
@@ -110,7 +118,7 @@ public class HomeViewModel extends ViewModel {
         // Remove the listener when the ViewModel is no longer used
         if (despesasListenerRegistration != null) {
             despesasListenerRegistration.remove();
-            despesaListenerRegistration = null;
+            //despesaListenerRegistration = null;
         }
     }
 }

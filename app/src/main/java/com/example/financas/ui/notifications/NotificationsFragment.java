@@ -12,6 +12,7 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import com.example.financas.R;
 import com.example.financas.databinding.FragmentNotificationsBinding;
+import com.example.financas.ui.main.MainViewModel;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Locale;
@@ -20,6 +21,7 @@ public class NotificationsFragment extends Fragment {
 
     private FragmentNotificationsBinding binding;
     private NotificationsViewModel notificationsViewModel;
+    private MainViewModel mainViewModel;
     private Calendar startDate;
     private Calendar endDate;
     private SimpleDateFormat sdf;
@@ -28,6 +30,7 @@ public class NotificationsFragment extends Fragment {
                              ViewGroup container, Bundle savedInstanceState) {
         notificationsViewModel =
                 new ViewModelProvider(this).get(NotificationsViewModel.class);
+        mainViewModel = new ViewModelProvider(requireActivity()).get(MainViewModel.class);
 
         binding = DataBindingUtil.inflate(inflater, R.layout.fragment_notifications, container, false);
         binding.setLifecycleOwner(getViewLifecycleOwner());
@@ -36,26 +39,40 @@ public class NotificationsFragment extends Fragment {
 
         sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
 
-        // Initialize dates
+        // Initialize dates (now handled by MainViewModel)
         startDate = Calendar.getInstance();
-        startDate.set(Calendar.DAY_OF_MONTH, 1);
         endDate = Calendar.getInstance();
-        endDate.set(Calendar.DAY_OF_MONTH, endDate.getActualMaximum(Calendar.DAY_OF_MONTH));
+
+        // Set initial dates from MainViewModel's global dates
+        if (mainViewModel.globalStartDate.getValue() != null) {
+            startDate.setTime(mainViewModel.globalStartDate.getValue());
+        }
+        if (mainViewModel.globalEndDate.getValue() != null) {
+            endDate.setTime(mainViewModel.globalEndDate.getValue());
+        }
 
         updateDateButtonsText();
 
         binding.buttonStartDate.setOnClickListener(v -> showDatePickerDialog(true));
         binding.buttonEndDate.setOnClickListener(v -> showDatePickerDialog(false));
 
-        
+        binding.buttonFilter.setOnClickListener(v -> {
+            mainViewModel.setGlobalDates(startDate.getTime(), endDate.getTime());
+        });
 
         // Observe totalDespesas from NotificationsViewModel
         notificationsViewModel.totalDespesas.observe(getViewLifecycleOwner(), total -> {
             // The data binding in the XML already handles this, but a manual update can be done here if needed.
         });
 
-        // Initial load
-        notificationsViewModel.loadTotalDespesasForPeriod(startDate.getTime(), endDate.getTime());
+        // Observe global dates from MainViewModel to trigger total expenses load
+        mainViewModel.globalStartDate.observe(getViewLifecycleOwner(), globalStartDate -> {
+            notificationsViewModel.loadTotalDespesasForPeriod(globalStartDate, mainViewModel.globalEndDate.getValue());
+        });
+
+        mainViewModel.globalEndDate.observe(getViewLifecycleOwner(), globalEndDate -> {
+            notificationsViewModel.loadTotalDespesasForPeriod(mainViewModel.globalStartDate.getValue(), globalEndDate);
+        });
 
         return root;
     }
@@ -65,9 +82,6 @@ public class NotificationsFragment extends Fragment {
         DatePickerDialog datePickerDialog = new DatePickerDialog(getContext(), (view, year, month, dayOfMonth) -> {
             calendar.set(year, month, dayOfMonth);
             updateDateButtonsText();
-            if (!isStartDate) { // Automatically filter when end date is selected
-                notificationsViewModel.loadTotalDespesasForPeriod(startDate.getTime(), endDate.getTime());
-            }
         }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH));
         datePickerDialog.show();
     }

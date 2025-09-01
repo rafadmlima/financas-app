@@ -63,12 +63,13 @@ public class HomeFragment extends Fragment implements DespesaAdapter.OnItemClick
             showAddEditDespesaDialog(null);
         });
 
-        // Observe selectedPeriodIndex from MainViewModel to filter expenses
-        mainViewModel.selectedPeriodIndex.observe(getViewLifecycleOwner(), index -> {
-            homeViewModel.loadDespesas(
-                    mainViewModel.getStartDateForPeriod(index),
-                    mainViewModel.getEndDateForPeriod(index)
-            );
+        // Observe global dates from MainViewModel to filter expenses
+        mainViewModel.globalStartDate.observe(getViewLifecycleOwner(), globalStartDate -> {
+            homeViewModel.loadDespesas(globalStartDate, mainViewModel.globalEndDate.getValue());
+        });
+
+        mainViewModel.globalEndDate.observe(getViewLifecycleOwner(), globalEndDate -> {
+            homeViewModel.loadDespesas(mainViewModel.globalStartDate.getValue(), globalEndDate);
         });
 
         return root;
@@ -180,9 +181,9 @@ public class HomeFragment extends Fragment implements DespesaAdapter.OnItemClick
         db.collection("despesas").add(despesa)
                 .addOnSuccessListener(documentReference -> {
                     android.widget.Toast.makeText(getContext(), "Despesa adicionada com sucesso!", android.widget.Toast.LENGTH_SHORT).show();
-                    homeViewModel.loadDespesas(
-                            mainViewModel.getStartDateForPeriod(mainViewModel.selectedPeriodIndex.getValue()),
-                            mainViewModel.getEndDateForPeriod(mainViewModel.selectedPeriodIndex.getValue())
+                                        homeViewModel.loadDespesas(
+                            mainViewModel.globalStartDate.getValue(),
+                            mainViewModel.globalEndDate.getValue()
                     );
                 })
                 .addOnFailureListener(e -> {
@@ -196,9 +197,9 @@ public class HomeFragment extends Fragment implements DespesaAdapter.OnItemClick
         db.collection("despesas").document(despesa.getDocumentId()).set(despesa)
                 .addOnSuccessListener(aVoid -> {
                     android.widget.Toast.makeText(getContext(), "Despesa atualizada com sucesso!", android.widget.Toast.LENGTH_SHORT).show();
-                    homeViewModel.loadDespesas(
-                            mainViewModel.getStartDateForPeriod(mainViewModel.selectedPeriodIndex.getValue()),
-                            mainViewModel.getEndDateForPeriod(mainViewModel.selectedPeriodIndex.getValue())
+                                        homeViewModel.loadDespesas(
+                            mainViewModel.globalStartDate.getValue(),
+                            mainViewModel.globalEndDate.getValue()
                     );
                 })
                 .addOnFailureListener(e -> {
